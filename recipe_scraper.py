@@ -1,8 +1,8 @@
 import scrapy
 import json
+import re
 
-all_recipe = open("all_recipes_date.txt", 'w')
-data = dict()
+rewrite = dict()
 
 class BrickSetSpider(scrapy.Spider):
     name = "recipe_spider"
@@ -11,22 +11,21 @@ class BrickSetSpider(scrapy.Spider):
     def parse(self, response):
         for recipe in response.xpath('.//div[@class="masonry-grid"]'):
             # get all grid data
-            for i in range(2, len(recipe.xpath('.//h3/a/text()'))):
-                current = recipe.xpath('./div[' + str(i) + ']')
+            print(len(recipe.xpath('.//h3/a/text()')))
+            for i in range(1, len(recipe.xpath('.//h3/a/text()'))+1):
+                current = recipe.xpath('./div[' + str(i+1) + ']')
                 print(current.xpath('.//h3/a/text()').extract_first())
                 output = current.xpath('.//h3/a/text()').extract_first()
                 date = current.xpath('.//div[@class="archive-item-date-posted"]/text()').extract_first()
                 cooking_time = current.xpath('.//div[@class="archive-item-meta-cooking-time"]/text()').extract_first()
-                solution = [int(s) for s in cooking_time.split() if s.isdigit()]
+                solution = [int(s) for s in re.findall(r'-?\d+', cooking_time)]
                 if output and date :
-                    all_recipe.write(output + "," + str(date) + ",")
-                    data[output] = {'name':output, 'date':date}
+                    rewrite.setdefault('name', []).append(output.lower())
+                    rewrite.setdefault('date', []).append(date)
                 if solution:
-                    all_recipe.write(str(solution)+',')
-                    data[output].update({'time':solution})
+                    rewrite.setdefault('time', []).append(solution[0])
                 else:
-                    all_recipe.write(str(1)+',')
-                    data[output].update({'time':1})
+                    rewrite.setdefault('time', []).append(1)
                 # get category
                 category = []
                 category_list = len(current.xpath('.//ul[@class="post-categories"]//li'))
@@ -34,9 +33,12 @@ class BrickSetSpider(scrapy.Spider):
                 for cat in range(category_list):
                     currentCategory = current.xpath('.//ul[@class="post-categories"]/li[' + str(cat+1) + ']/a/text()').extract_first()
                     if currentCategory:
-                        all_recipe.write(str(currentCategory)+',')
+                        category.append(currentCategory.lower())
+                if len(category):
+                    rewrite.setdefault('category',[]).append(category)
+                else:
+                    rewrite.setdefault('category',[]).append(['unknown'])
 
-                all_recipe.write('\n')
                 # this is the recipe page
 
                 next_page = current.xpath('.//h3/a/@href').extract_first()
@@ -47,31 +49,31 @@ class BrickSetSpider(scrapy.Spider):
 
         # done with current page -> move to next
         next_index = response.xpath('.//div[@class="archive-pagination-next"]/a/@href').extract_first()
-        #with open("data.json", 'w') as fp:
-        #    json.dump(data, fp, indent=4)
         #print(next_index)
         #yield scrapy.Request(next_index, callback=self.parse)
 
     def parse_page(self, response):
         difficulty = response.xpath('.//li[@class="single-meta-difficulty"]//span/text()').extract_first()
         serves = response.xpath('.//li[@class="single-meta-serves"]//span/text()').extract_first()
-        name = response.xpath('//h1/text()').extract_first()
+        name = response.xpath('.//h1/text()').extract_first()
+        serves = [int(s) for s in serves.split() if s.isdigit()]
         print("Fill")
-        all_recipe.write(name+','+str(difficulty)+","+str(serves)+'\n')
-        data[name].update({'difficulty':difficulty, 'serves':serves})
+        rewrite.setdefault('difficulty', []).append(difficulty.lower())
+        rewrite.setdefault('serves',[]).append(serves)
         # now extract the ingredients
         getIngredientTag = response.xpath('.//table[@class="ingredients-table"]')
-        ingredients_list = dict()
         ing = []
         qty = []
+        ing.append(name.lower())
+        qty.append(0)
         for i in range(len(getIngredientTag.xpath('.//tr'))):
-            quantity = getIngredientTag.xpath('.//tr['+str(i+1)+']/td[2]/span[1]/text()').extract()
-            ingredient = getIngredientTag.xpath('.//tr['+str(i+1)+']/td[2]/span[2]/text()').extract()
-            all_recipe.write(str(quantity)+','+str(ingredient)+'\n')
+            quantity = getIngredientTag.xpath('.//tr['+str(i+1)+']/td[2]/span[1]/text()').extract_first()
+            ingredient = getIngredientTag.xpath('.//tr['+str(i+1)+']/td[2]/span[2]/text()').extract_first()
             if quantity and ingredient:
                 qty.append(quantity)
-                ing.append(ingredient)
-        ingredients_list['ingredients'] = {'ingredient':ing, 'quantity':qty}
-        data[name].update(ingredients_list)
-        with open('data.json', 'w') as fp:
-            json.dump(data, fp, indent=4)
+                ing.append(ingredient.lower())
+        if len(qty) and len(ing):
+            rewrite.setdefault('quantity', []).append(qty)
+            rewrite.setdefault('ingredient', []).append(ing)
+        with open('rewrite.json', 'w') as fp:
+            json.dump(rewrite, fp, indent=4)
