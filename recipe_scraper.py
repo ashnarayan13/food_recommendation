@@ -3,6 +3,7 @@ import json
 import re
 
 rewrite = dict()
+save_url = open('recipe.txt', 'w')
 
 class BrickSetSpider(scrapy.Spider):
     name = "recipe_spider"
@@ -18,14 +19,14 @@ class BrickSetSpider(scrapy.Spider):
                 output = current.xpath('.//h3/a/text()').extract_first()
                 date = current.xpath('.//div[@class="archive-item-date-posted"]/text()').extract_first()
                 cooking_time = current.xpath('.//div[@class="archive-item-meta-cooking-time"]/text()').extract_first()
-                solution = [int(s) for s in re.findall(r'-?\d+', cooking_time)]
-                if output and date :
-                    rewrite.setdefault('name', []).append(output.lower())
-                    rewrite.setdefault('date', []).append(date)
-                if solution:
+                if cooking_time:
+                    solution = [int(s) for s in re.findall(r'-?\d+', cooking_time)]
                     rewrite.setdefault('time', []).append(solution[0])
                 else:
                     rewrite.setdefault('time', []).append(1)
+                if output and date :
+                    rewrite.setdefault('name', []).append(output.lower())
+                    rewrite.setdefault('date', []).append(date)
                 # get category
                 category = []
                 category_list = len(current.xpath('.//ul[@class="post-categories"]//li'))
@@ -43,23 +44,28 @@ class BrickSetSpider(scrapy.Spider):
 
                 next_page = current.xpath('.//h3/a/@href').extract_first()
                 if next_page:
-                    #print("Current index")
-                    #print(next_page)
-                    yield scrapy.Request(next_page, callback=self.parse_page)
+                    self.crawler.engine.schedule(scrapy.Request(next_page, callback=self.parse_page), self)
 
         # done with current page -> move to next
         next_index = response.xpath('.//div[@class="archive-pagination-next"]/a/@href').extract_first()
         #print(next_index)
-        #yield scrapy.Request(next_index, callback=self.parse)
+        yield scrapy.Request(next_index, callback=self.parse)
 
     def parse_page(self, response):
         difficulty = response.xpath('.//li[@class="single-meta-difficulty"]//span/text()').extract_first()
+        if difficulty:
+            rewrite.setdefault('difficulty', []).append(difficulty.lower())
+        else:
+            rewrite.setdefault('difficulty', []).append('unknown')
         serves = response.xpath('.//li[@class="single-meta-serves"]//span/text()').extract_first()
         name = response.xpath('.//h1/text()').extract_first()
-        serves = [int(s) for s in serves.split() if s.isdigit()]
+        if serves:
+            ser = [int(s) for s in re.findall(r'-?\d+', serves)]
+            rewrite.setdefault('serves', []).append(ser[0])
+        else:
+            rewrite.setdefault('serves', []).append(1)
         print("Fill")
-        rewrite.setdefault('difficulty', []).append(difficulty.lower())
-        rewrite.setdefault('serves',[]).append(serves)
+
         # now extract the ingredients
         getIngredientTag = response.xpath('.//table[@class="ingredients-table"]')
         ing = []
