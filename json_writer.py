@@ -63,6 +63,10 @@ def fixEmpty(input):
     diff = input['difficulty']
     print(len(name))
     count = 0
+    for i in range(len(qty)):
+        if len(qty[i])==1:
+            count += 1
+    print(count)
     # remove unnecessary words
     for i in range(len(qty)):
         for val in range(len(qty[i])):
@@ -93,11 +97,11 @@ def main():
     with open('rewrite.json', 'r') as f:
         currentDict = json.load(f)
     new_dict = cleanInput(currentDict)
-    with open('data.json', 'w') as fp:
+    with open('full_data.json', 'w') as fp:
         json.dump(new_dict, fp, indent=4)
 
     final = fixEmpty(new_dict)
-    with open('clean.json', 'w') as fp:
+    with open('full_data_clean.json', 'w') as fp:
         json.dump(final, fp, indent=4)
 
 

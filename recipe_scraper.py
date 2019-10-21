@@ -8,6 +8,7 @@ save_url = open('recipe.txt', 'w')
 class BrickSetSpider(scrapy.Spider):
     name = "recipe_spider"
     start_urls = ['https://veenasvegnation.com/recipe-index/']
+    #start_urls = ['https://veenasvegnation.com/recipe-index/?sf_paged=24']
 
     def parse(self, response):
         for recipe in response.xpath('.//div[@class="masonry-grid"]'):
@@ -68,18 +69,39 @@ class BrickSetSpider(scrapy.Spider):
 
         # now extract the ingredients
         getIngredientTag = response.xpath('.//table[@class="ingredients-table"]')
-        ing = []
-        qty = []
-        ing.append(name.lower())
-        qty.append(0)
-        for i in range(len(getIngredientTag.xpath('.//tr'))):
-            quantity = getIngredientTag.xpath('.//tr['+str(i+1)+']/td[2]/span[1]/text()').extract_first()
-            ingredient = getIngredientTag.xpath('.//tr['+str(i+1)+']/td[2]/span[2]/text()').extract_first()
-            if quantity and ingredient:
-                qty.append(quantity)
-                ing.append(ingredient.lower())
-        if len(qty) and len(ing):
-            rewrite.setdefault('quantity', []).append(qty)
-            rewrite.setdefault('ingredient', []).append(ing)
+        if getIngredientTag:
+            print('Ing page', getIngredientTag)
+            ing = []
+            qty = []
+            ing.append(name.lower())
+            qty.append(0)
+            for i in range(len(getIngredientTag.xpath('.//tr'))):
+                quantity = getIngredientTag.xpath('.//tr['+str(i+1)+']/td[2]/span[1]/text()').extract_first()
+                ingredient = getIngredientTag.xpath('.//tr['+str(i+1)+']/td[2]/span[2]/text()').extract_first()
+                if quantity and ingredient:
+                    qty.append(quantity)
+                    ing.append(ingredient.lower())
+            if len(qty) and len(ing):
+                rewrite.setdefault('quantity', []).append(qty)
+                rewrite.setdefault('ingredient', []).append(ing)
+        else:
+            getIngredientTag = response.xpath('.//table[@class="MsoTableGrid"]')
+            if getIngredientTag==[]:
+                getIngredientTag = response.xpath('.//table[@class="MsoNormalTable"]')
+            print('Else page', getIngredientTag)
+            ing = []
+            qty = []
+            ing.append(name.lower())
+            qty.append(0)
+            for i in range(len(getIngredientTag.xpath('.//tr'))):
+                quantity = getIngredientTag.xpath('.//tr[' + str(i + 1) + ']/td[2]/div/text()').extract()
+                ingredient = getIngredientTag.xpath('.//tr[' + str(i + 1) + ']/td[1]/div/text()').extract_first()
+                if quantity and ingredient:
+                    qty.append(quantity)
+                    ing.append(ingredient.lower())
+            if len(qty) and len(ing):
+                rewrite.setdefault('quantity', []).append(qty)
+                rewrite.setdefault('ingredient', []).append(ing)
+
         with open('rewrite.json', 'w') as fp:
             json.dump(rewrite, fp, indent=4)
