@@ -16,6 +16,7 @@ def cleanInput(currentDict):
     new_dict['date'] = currentDict['date']
     new_dict['time'] = currentDict['time']
     new_dict['category'] = currentDict['category']
+    new_dict['url'] = currentDict['url']
     ing = currentDict['ingredient']
     diff = currentDict['difficulty']
     serves = currentDict['serves']
@@ -61,6 +62,7 @@ def fixEmpty(input):
     qty = input['quantity']
     serves = input['serves']
     diff = input['difficulty']
+    url = input['url']
     print(len(name))
     count = 0
     for i in range(len(qty)):
@@ -90,6 +92,7 @@ def fixEmpty(input):
     repeat['category'] = cat
     repeat['difficulty'] = diff
     repeat['quantity'] = qty
+    repeat['url'] = url
     return repeat
 
 

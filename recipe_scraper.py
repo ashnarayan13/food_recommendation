@@ -45,6 +45,7 @@ class BrickSetSpider(scrapy.Spider):
 
                 next_page = current.xpath('.//h3/a/@href').extract_first()
                 if next_page:
+                    rewrite.setdefault('url', []).append(next_page)
                     self.crawler.engine.schedule(scrapy.Request(next_page, callback=self.parse_page), self)
 
         # done with current page -> move to next
